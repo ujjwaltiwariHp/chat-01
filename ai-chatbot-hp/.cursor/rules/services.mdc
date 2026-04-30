@@ -1,0 +1,13 @@
+---
+description: Service layer conventions (business logic)
+globs: services/*/src/services/**/*.ts
+alwaysApply: false
+---
+# Services
+
+- Pure business logic. No HTTP or transport concerns.
+- Take typed inputs (already validated). Return typed outputs.
+- Throw `AppError` subclasses for known failure modes.
+- Database access ONLY via repos/models — never call the ORM directly from a service.
+- External AI calls (OpenAI) ONLY via the shared core client.
+- Side effects (Redis cache, token tracking) must be explicit.

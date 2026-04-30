@@ -1,0 +1,114 @@
+---
+alwaysApply: true
+---
+# Auto-generated from CLAUDE.md — do not edit
+
+# Project: HP Intelligence
+
+## What this is
+
+Enterprise AI Ecosystem for lead intelligence and HR automation, built with Node.js.
+
+## Tech stack
+
+- Node.js: 24 LTS
+- Language: TypeScript 5+ strict mode
+- Framework: Fastify 5
+- ORM / DB layer: Drizzle ORM
+- Migrations: Knex
+- Database: PostgreSQL 15
+- Cache / queue: Redis 7 / BullMQ
+- Validation: Zod (request bodies, env, external API responses)
+- Auth: JWT / Multi-mode (Gateway/Widget/Standalone)
+- Logging: Pino — structured JSON
+- Testing: Vitest + Supertest
+- Package manager: pnpm
+
+## Commands
+
+- `pnpm install` — install deps
+- `pnpm dev` — dev server with hot reload
+- `pnpm build` — TS compile to `dist/`
+- `pnpm start` — run production build
+- `pnpm lint` — ESLint
+- `pnpm typecheck` — `tsc --noEmit`
+- `pnpm test` — unit tests
+- `pnpm test:integration` — integration tests
+- `pnpm db:migrate` — run migrations
+- `pnpm db:generate` — generate migration from schema diff (drizzle-kit)
+
+When verifying a change, run `pnpm lint && pnpm typecheck && pnpm test`.
+
+## Folder map
+
+- `packages/hp-ai-core/` — shared infrastructure
+- `services/hp-chatbot-ai/` — main chatbot service
+- `services/hp-lead-categorizer-ai/` — lead analysis service
+- `services/hp-intelligence-gateway/` — API gateway
+- `services/hp-widget-service/` — public widget proxy
+- `src/routes/` — HTTP route handlers (within services)
+- `src/services/` — business logic (within services)
+- `src/repos/` — DB access / Drizzle schemas (within services)
+- `src/schemas/` — Zod schemas
+- `src/middleware/` — Fastify plugins/hooks
+- `src/jobs/` — background workers
+- `src/lib/` — shared utilities
+- `src/config/` — env parsing, app config
+- `tests/` — tests, mirroring `src/`
+- `migrations/` — DB migrations
+
+## Conventions
+
+- Layered architecture: route → service → repo. No skipping layers.
+- Routes are thin: parse input, call service, format output. No business logic.
+- Services are pure where possible — no direct HTTP concerns.
+- All env vars are parsed via Zod in `src/config/index.ts` or similar. Never `process.env.X` outside that file.
+- Validate every request body with Zod. Reject early with 400.
+- Errors throw typed errors (`AppError` subclasses). The error middleware formats them.
+- Logging is structured (no string concatenation). Always include a request ID from `requestContext`.
+- Async is `async/await`. No callback-style code.
+- Use `pnpm` (not `npm` or `yarn`) — the workspace and lockfile are pnpm-format.
+
+## Forbidden patterns
+
+- DO NOT use `any`. Use `unknown` and narrow.
+- DO NOT throw raw `Error` — extend `AppError`.
+- DO NOT call `process.exit` outside server entry points.
+- DO NOT log full request/response bodies (PII risk). Log IDs and counts.
+- DO NOT swallow errors. Either handle or rethrow.
+- DO NOT add new packages without checking maintenance status (last commit, open issues).
+- DO NOT use raw SQL when the ORM supports the query — exceptions need a comment with the reason.
+
+## Known Exceptions
+
+- **Database Migrations**: Migration files use `@ts-nocheck` to bypass strict typing on generated artifacts (Drizzle/Knex).
+
+## How to verify a change
+
+1. `pnpm lint && pnpm typecheck && pnpm test` all pass (root or service-level)
+2. If touching DB: migration runs cleanly on a fresh DB; rollback is defined
+3. If touching an HTTP route: integration test covers the happy path and a 4xx case
+4. If touching auth: an authorization test exists for the new path
+5. Logs include a request ID for any new code path
+
+## Development Loop
+
+You MUST follow the 6-step development loop for every task:
+
+1. **CONTEXT**: Pull ticket data and history BEFORE opening files.
+2. **PLAN**: Write a `PLAN.md` technical overview and ask for a "Skeptical Review."
+3. **IMPLEMENT**: Use the right tool (Cursor for multi-file, Claude for agentic work).
+4. **VERIFY**: Run `/review` and `/test` before committing.
+5. **COMMIT**: Modern hooks (Husky) will enforce linting and typechecking.
+6. **SHIP**: Use `/pr-description` to generate the PR body from the plan.
+
+## Agent Cooperation
+
+- If a `PLAN.md` exists, follow it strictly. Do not deviate.
+- If multiple agents are active (Cursor + Claude), avoid editing the same file at once.
+- Use Notepads to store persistent context across a long feature.
+
+## Where to find more
+
+- Workflow Guide: see `WORKFLOW.md`
+- Architecture Overview: see `ARCHITECTURE.md`

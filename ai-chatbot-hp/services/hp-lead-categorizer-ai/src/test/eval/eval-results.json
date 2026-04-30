@@ -1,0 +1,18 @@
+[
+  {
+    "id": "case-001",
+    "error": "AI returned invalid structured output"
+  },
+  {
+    "id": "case-002",
+    "error": "AI returned invalid structured output"
+  },
+  {
+    "id": "case-003",
+    "error": "AI returned invalid structured output"
+  },
+  {
+    "id": "case-004",
+    "error": "AI returned invalid structured output"
+  }
+]

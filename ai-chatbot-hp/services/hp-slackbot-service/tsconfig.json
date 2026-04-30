@@ -1,0 +1,37 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@config/*": [
+        "src/config/*"
+      ],
+      "@services/*": [
+        "src/services/*"
+      ],
+      "@lib/*": [
+        "src/lib/*"
+      ],
+      "@routes/*": [
+        "src/routes/*"
+      ],
+      "@/*": [
+        "src/*"
+      ]
+    }
+  },
+  "references": [
+    {
+      "path": "../../packages/hp-ai-core"
+    }
+  ],
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

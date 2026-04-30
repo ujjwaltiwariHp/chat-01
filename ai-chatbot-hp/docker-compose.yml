@@ -1,0 +1,293 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: hp-intelligence-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-hp_intelligence}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-hp_intelligence}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hp-network
+
+  redis:
+    image: redis:7
+    container_name: hp-intelligence-redis
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-pandas_secure_redis_123}
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'redis-cli -a "$${REDIS_PASSWORD:-pandas_secure_redis_123}" ping | grep PONG || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hp-network
+
+  hp-intelligence-gateway:
+    build:
+      context: .
+      dockerfile: services/hp-intelligence-gateway/Dockerfile
+    container_name: hp-intelligence-gateway
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=${GATEWAY_PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+      - CHATBOT_SERVICE_URL=http://hp-chatbot-ai:${CHATBOT_PORT}
+      - LEAD_CATEGORIZER_SERVICE_URL=http://hp-lead-categorizer-ai:${CATEGORIZER_PORT}
+      - HR_POLICY_SERVICE_URL=http://hp-hr-policy-ai:${HR_POLICY_PORT}
+      - SLACKBOT_SERVICE_URL=http://hp-slackbot-service:${SLACK_PORT}
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    volumes:
+      - ./.env:/usr/src/app/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+      hp-chatbot-ai:
+        condition: service_started
+      hp-lead-categorizer-ai:
+        condition: service_started
+      hp-hr-policy-ai:
+        condition: service_started
+    networks:
+      - hp-network
+
+  hp-chatbot-ai:
+    build:
+      context: .
+      dockerfile: services/hp-chatbot-ai/Dockerfile
+    container_name: hp-chatbot-ai
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CHATBOT_PORT=${CHATBOT_PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CHATBOT_OPENAI_API_KEY=${CHATBOT_OPENAI_API_KEY:-}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "${CHATBOT_PORT}:${CHATBOT_PORT}"
+    volumes:
+      - ./.env:/usr/src/app/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    networks:
+      - hp-network
+
+  hp-lead-categorizer-ai:
+    build:
+      context: .
+      dockerfile: services/hp-lead-categorizer-ai/Dockerfile
+    container_name: hp-lead-categorizer-ai
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CATEGORIZER_PORT=${CATEGORIZER_PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LEAD_SERVICE_OPENAI_API_KEY=${LEAD_SERVICE_OPENAI_API_KEY:-}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+    ports:
+      - "${CATEGORIZER_PORT}:${CATEGORIZER_PORT}"
+    volumes:
+      - ./.env:/usr/src/app/.env
+      - ./services/hp-lead-categorizer-ai/dist:/usr/src/app/dist
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    networks:
+      - hp-network
+
+  hp-hr-policy-ai:
+    build:
+      context: .
+      dockerfile: services/hp-hr-policy-ai/Dockerfile
+    container_name: hp-hr-policy-ai
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - HR_POLICY_PORT=${HR_POLICY_PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HR_POLICY_OPENAI_API_KEY=${HR_POLICY_OPENAI_API_KEY:-}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+      - GATEWAY_SERVICE_SECRET=${GATEWAY_SERVICE_SECRET}
+      - WIDGET_SERVICE_SECRET=${WIDGET_SERVICE_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "${HR_POLICY_PORT}:${HR_POLICY_PORT}"
+    volumes:
+      - ./.env:/usr/src/app/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    networks:
+      - hp-network
+
+  hp-widget-service:
+    build:
+      context: .
+      dockerfile: services/hp-widget-service/Dockerfile
+    container_name: hp-widget-service
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - WIDGET_PORT=${WIDGET_PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+    ports:
+      - "${WIDGET_PORT}:${WIDGET_PORT}"
+    volumes:
+      - ./.env:/usr/src/app/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    networks:
+      - hp-network
+
+  hp-slackbot-service:
+    build:
+      context: .
+      dockerfile: services/hp-slackbot-service/Dockerfile
+    container_name: hp-slackbot-service
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=${SLACK_PORT}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+      - GATEWAY_URL=http://hp-intelligence-gateway:${GATEWAY_PORT}
+    ports:
+      - "${SLACK_PORT}:${SLACK_PORT}"
+    volumes:
+      - ./.env:/usr/src/app/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      hp-intelligence-gateway:
+        condition: service_started
+    networks:
+      - hp-network
+
+  hp-intelligence-migrations:
+    build:
+      context: .
+      dockerfile: Migration.Dockerfile
+    container_name: hp-intelligence-migrations
+    env_file: .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    volumes:
+      - ./.env:/usr/src/app/.env
+    command: >
+      sh -c "pnpm --filter @hp-intelligence/chatbot-ai migrate && 
+             pnpm --filter @hp-intelligence/gateway migrate && 
+             pnpm --filter @hp-intelligence/lead-categorizer-ai migrate &&
+             pnpm --filter @hp-intelligence/hr-policy-ai migrate &&
+             pnpm --filter @hp-intelligence/widget-service migrate"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hp-network
+
+networks:
+  hp-network:
+    name: hp-network
+    driver: bridge
+
+volumes:
+  pg-data:
+  redis-data:

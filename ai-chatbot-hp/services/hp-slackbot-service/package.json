@@ -1,0 +1,33 @@
+{
+  "name": "@hp-intelligence/slackbot-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "tsx --env-file=../../.env src/server.ts",
+    "build": "tsc && tsc-alias",
+    "test": "node --test",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix --max-warnings 0"
+  },
+  "dependencies": {
+    "@hp-intelligence/core": "workspace:*",
+    "@slack/web-api": "^7.10.0",
+    "drizzle-orm": "^0.45.1",
+    "fastify": "^5.8.2",
+    "fastify-plugin": "^5.1.0",
+    "@fastify/formbody": "^8.0.2",
+    "ioredis": "^5.10.0",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.20.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/pg": "^8.11.11",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "tsc-alias": "^1.8.10"
+  }
+}

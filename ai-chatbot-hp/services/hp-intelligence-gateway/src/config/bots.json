@@ -1,0 +1,27 @@
+{
+  "bots": [
+    {
+      "name": "chatbot",
+      "baseUrl": "http://hp-chatbot-ai:4001",
+      "invokePath": "/api/v1/chat/invoke",
+      "costPerInvoke": 1,
+      "description": "General purpose website chatbot"
+    },
+    {
+      "name": "lead-categorizer",
+      "baseUrl": "http://hp-lead-categorizer-ai:4002",
+      "invokePath": "/api/v1/invoke",
+      "costPerInvoke": 2,
+      "billingMode": "service-metered",
+      "description": "Lead scoring and categorization"
+    },
+    {
+      "name": "hr-policy",
+      "baseUrl": "http://hp-hr-policy-ai:4003",
+      "invokePath": "/api/v1/invoke",
+      "costPerInvoke": 1,
+      "billingMode": "service-metered",
+      "description": "HR policy assistant backed by RAG and vector search"
+    }
+  ]
+}

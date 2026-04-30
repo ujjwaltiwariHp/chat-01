@@ -1,0 +1,37 @@
+{
+  "name": "@hp-intelligence/hr-policy-ai",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "tsx --env-file=../../.env src/server.ts",
+    "build": "tsc && tsc-alias",
+    "migrate": "knex migrate:latest --knexfile knexfile.ts",
+    "knex": "knex",
+    "seed:hr-policy": "tsx --env-file=../../.env src/scripts/seed-hr-policy.ts",
+    "test": "tsx --env-file=../../.env src/test/hr-policy.behavior.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix --max-warnings 0"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@hp-intelligence/core": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "fastify": "^5.8.2",
+    "fastify-plugin": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.1.0",
+    "openai": "^4.104.0",
+    "pg": "^8.20.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.5.0",
+    "@types/pg": "^8.11.11",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

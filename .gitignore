@@ -1,0 +1,77 @@
+# Workspace Artifacts
+**/dist/
+**/build/
+node_modules/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.env
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE/Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Database / Migrations
+# Keep migrations, but ignore local sqlite or similar if used
+*.sqlite
+
+# Testing
+coverage/
+.nyc_output
+
+
+# Temporary
+/tmp/
+.temp/
+
+# Custom scripts
+# /scripts/
+
+# AI & Agent Frameworks (Personal / Local only)
+.claude/settings.local.json
+PLAN.md
+SPEC.md
+SCRATCH.md
+.anthropic/
+.cursor/settings.json
+.cursor-history
+# Block all Cursor local state EXCEPT team-shared rules
+.cursor/*
+!.cursor/rules/
+.vsh/
+.gemini/
+.aider/
+.windsurf/
+.pearai/
+.continue/
+.mentat/
+.gpt-engineer/
+
+# Safety net for accidental build leakage in source folders
+**/src/**/*.js
+**/src/**/*.d.ts
+**/src/**/*.js.map
+**/src/**/*.d.ts.map

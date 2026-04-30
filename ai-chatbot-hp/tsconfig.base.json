@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": false,
+    "baseUrl": ".",
+    "paths": {
+      "@hp-intelligence/core": ["packages/hp-ai-core/src"],
+      "@hp-intelligence/core/*": ["packages/hp-ai-core/src/*"],
+    }
+  }
+}

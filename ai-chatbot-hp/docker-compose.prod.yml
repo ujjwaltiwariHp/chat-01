@@ -1,0 +1,343 @@
+x-app-service: &app-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - .env
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+  networks:
+    - hp-backend
+    - hp-edge
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: hp-intelligence-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-hp_intelligence}
+    volumes:
+      - pg-data-prod:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-hp_intelligence}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hp-backend
+
+  redis:
+    image: redis:7
+    container_name: hp-intelligence-redis-prod
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-pandas_secure_redis_123}
+    command:
+      [
+        "redis-server",
+        "--requirepass",
+        "${REDIS_PASSWORD:-pandas_secure_redis_123}",
+      ]
+    expose:
+      - "6379"
+    volumes:
+      - redis-data-prod:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'redis-cli -a "$${REDIS_PASSWORD}" ping | grep PONG || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hp-backend
+
+  hp-intelligence-gateway:
+    <<: *app-service
+    build:
+      context: .
+      dockerfile: services/hp-intelligence-gateway/Dockerfile
+    container_name: hp-intelligence-gateway-prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+      hp-chatbot-ai:
+        condition: service_started
+      hp-lead-categorizer-ai:
+        condition: service_started
+      hp-hr-policy-ai:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_NAME: hp-intelligence-gateway
+      PORT: ${GATEWAY_PORT:-4000}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      GATEWAY_SERVICE_SECRET: ${GATEWAY_SERVICE_SECRET}
+      HP_BIZ_API_KEY: ${HP_BIZ_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:3000/dashboard}
+      CHATBOT_SERVICE_URL: http://hp-chatbot-ai-prod:${CHATBOT_PORT:-4001}
+      LEAD_CATEGORIZER_SERVICE_URL: http://hp-lead-categorizer-ai-prod:${CATEGORIZER_PORT:-4002}
+      HR_POLICY_SERVICE_URL: http://hp-hr-policy-ai-prod:${HR_POLICY_PORT:-4003}
+      SLACKBOT_SERVICE_URL: ${SLACKBOT_SERVICE_URL:-http://localhost:4006}
+    ports:
+      - "${GATEWAY_PORT:-4000}:${GATEWAY_PORT:-4000}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:${GATEWAY_PORT:-4000}/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  hp-chatbot-ai:
+    <<: *app-service
+    build:
+      context: .
+      dockerfile: services/hp-chatbot-ai/Dockerfile
+    container_name: hp-chatbot-ai-prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_NAME: hp-chatbot-ai
+      CHATBOT_PORT: ${CHATBOT_PORT:-4001}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      GATEWAY_SERVICE_SECRET: ${GATEWAY_SERVICE_SECRET}
+      WIDGET_SERVICE_SECRET: ${WIDGET_SERVICE_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CHATBOT_OPENAI_API_KEY: ${CHATBOT_OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      AUTH_MODE: ${AUTH_MODE:-multi}
+    ports:
+      - "${CHATBOT_PORT:-4001}:${CHATBOT_PORT:-4001}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:${CHATBOT_PORT:-4001}/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  hp-lead-categorizer-ai:
+    <<: *app-service
+    build:
+      context: .
+      dockerfile: services/hp-lead-categorizer-ai/Dockerfile
+    container_name: hp-lead-categorizer-ai-prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_NAME: hp-lead-categorizer-ai
+      CATEGORIZER_PORT: ${CATEGORIZER_PORT:-4002}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LEAD_SERVICE_OPENAI_API_KEY: ${LEAD_SERVICE_OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      AUTH_MODE: ${AUTH_MODE:-multi}
+    ports:
+      - "${CATEGORIZER_PORT:-4002}:${CATEGORIZER_PORT:-4002}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:${CATEGORIZER_PORT:-4002}/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  hp-hr-policy-ai:
+    <<: *app-service
+    build:
+      context: .
+      dockerfile: services/hp-hr-policy-ai/Dockerfile
+    container_name: hp-hr-policy-ai-prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_NAME: hp-hr-policy-ai
+      HR_POLICY_PORT: ${HR_POLICY_PORT:-4003}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      GATEWAY_SERVICE_SECRET: ${GATEWAY_SERVICE_SECRET}
+      WIDGET_SERVICE_SECRET: ${WIDGET_SERVICE_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      HR_POLICY_OPENAI_API_KEY: ${HR_POLICY_OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      AUTH_MODE: ${AUTH_MODE:-multi}
+    ports:
+      - "${HR_POLICY_PORT:-4003}:${HR_POLICY_PORT:-4003}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:${HR_POLICY_PORT:-4003}/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  hp-widget-service:
+    <<: *app-service
+    build:
+      context: .
+      dockerfile: services/hp-widget-service/Dockerfile
+    container_name: hp-widget-service-prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      hp-intelligence-migrations:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_NAME: hp-widget-service
+      WIDGET_PORT: ${WIDGET_PORT:-4010}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      WIDGET_SERVICE_SECRET: ${WIDGET_SERVICE_SECRET}
+      CHATBOT_SERVICE_URL: http://hp-chatbot-ai-prod:${CHATBOT_PORT:-4001}
+    ports:
+      - "${WIDGET_PORT:-4010}:${WIDGET_PORT:-4010}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:${WIDGET_PORT:-4010}/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  hp-slackbot-service:
+    <<: *app-service
+    build:
+      context: .
+      dockerfile: services/hp-slackbot-service/Dockerfile
+    container_name: hp-slackbot-service-prod
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: ${SLACK_PORT}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      GATEWAY_URL: http://hp-intelligence-gateway-prod:${GATEWAY_PORT}
+    ports:
+      - "${SLACK_PORT}:${SLACK_PORT}"
+    depends_on:
+      hp-intelligence-gateway:
+        condition: service_started
+
+  hp-intelligence-migrations:
+    build:
+      context: .
+      dockerfile: Migration.Dockerfile
+    container_name: hp-intelligence-migrations-prod
+    env_file: .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    volumes:
+      - ./.env:/usr/src/app/.env
+    command: >
+      sh -c "pnpm --filter @hp-intelligence/chatbot-ai migrate && 
+             pnpm --filter @hp-intelligence/gateway migrate && 
+             pnpm --filter @hp-intelligence/lead-categorizer-ai migrate &&
+             pnpm --filter @hp-intelligence/hr-policy-ai migrate &&
+             pnpm --filter @hp-intelligence/widget-service migrate"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hp-backend
+
+networks:
+  hp-backend:
+    name: hp-backend
+    driver: bridge
+  hp-edge:
+    name: hp-edge
+    driver: bridge
+
+volumes:
+  pg-data-prod:
+  redis-data-prod:

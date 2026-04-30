@@ -1,0 +1,15 @@
+---
+description: HTTP route handler conventions
+globs: services/*/src/routes/**/*.ts
+alwaysApply: false
+---
+# Routes
+
+- One file per resource (e.g., `invoke.route.ts`).
+- Each handler:
+  1. Parses input with Zod (request body, params, query).
+  2. Calls a service function. Does NOT contain business logic.
+  3. Formats the response (e.g., SSE for chatbot, JSON for others).
+  4. Lets codebase errors propagate to the global Fastify error handler.
+- Status codes: 200 OK, 201 Created, 204 No Content, 400 invalid input, 401 unauthenticated, 403 unauthorized, 404 not found, 500 server error.
+- Never expose stack traces in 5xx responses.

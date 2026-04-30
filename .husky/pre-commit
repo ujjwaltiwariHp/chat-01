@@ -1,0 +1,4 @@
+pnpm rules:sync
+git add .cursorrules .cursor/rules/always.mdc AGENTS.md .clauderules .agent/instructions.md
+pnpm exec lint-staged
+pnpm typecheck

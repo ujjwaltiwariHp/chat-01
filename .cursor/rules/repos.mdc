@@ -1,0 +1,12 @@
+---
+description: Repository / data access layer
+globs: services/*/src/db/**/*.ts, services/*/src/repos/**/*.ts
+alwaysApply: false
+---
+# Repos / Data Access
+
+- One repo per aggregate or domain.
+- Functions named for intent: `findById`, `createMessage`, `listConversations`.
+- Return domain types — never raw DB rows.
+- Use Drizzle ORM. Raw SQL needs a comment justification.
+- Transactions are explicit — passed in when spanning multiple operations.

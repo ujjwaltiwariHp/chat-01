@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Debugger</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #121212; color: #eee; }
+        #log { background: #000; padding: 10px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; }
+        .error { color: #ff5555; }
+        .success { color: #55ff55; }
+    </style>
+</head>
+<body>
+    <h1>CORS Debugger for AI Chatbot</h1>
+    <button id="send">Send Request</button>
+    <div id="status">Ready</div>
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function addLog(msg, type = '') {
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = msg + '\n';
+            log.appendChild(span);
+        }
+
+        document.getElementById('send').onclick = async () => {
+            status.textContent = 'Sending...';
+            addLog('Starting fetch to http://72.60.200.224:4005/api/v1/bots/chatbot/invoke');
+            
+            try {
+                const response = await fetch('http://72.60.200.224:4005/api/v1/bots/chatbot/invoke', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer hp_biz_token_789',
+                        'X-Tenant-ID': '00000000-0000-0000-0000-000000000001',
+                        'X-Session-ID': 'static-session-123'
+                    },
+                    body: JSON.stringify({ message: 'Hello!', stream: true })
+                });
+
+                status.textContent = `Completed with status: ${response.status}`;
+                addLog(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                if (response.body) {
+                    const reader = response.body.getReader();
+                    addLog('Stream started...');
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const text = new TextDecoder().decode(value);
+                        addLog('Chunk: ' + text);
+                    }
+                    addLog('Stream completed.');
+                }
+            } catch (err) {
+                status.textContent = 'Failed';
+                addLog('Fetch Error: ' + err.message, 'error');
+                console.error(err);
+            }
+        };
+    </script>
+</body>
+</html>

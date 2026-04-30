@@ -1,0 +1,72 @@
+{
+  "name": "hp-intelligence",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "pnpm docker:dev",
+    "dev:gateway": "pnpm --filter '@hp-intelligence/gateway' dev",
+    "dev:widget": "pnpm --filter '@hp-intelligence/widget-service' dev",
+    "dev:chatbot": "pnpm --filter '@hp-intelligence/chatbot-ai' dev",
+    "dev:categorizer": "pnpm --filter '@hp-intelligence/lead-categorizer-ai' dev",
+    "build": "pnpm -r build",
+    "start": "pnpm -r start",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:integration": "pnpm -r --if-present test:integration",
+    "db:migrate": "pnpm -r --if-present migrate",
+    "db:generate": "pnpm -r --if-present generate",
+    "new-bot": "bash scripts/new-bot.sh",
+    "docker:dev": "docker compose up --build",
+    "docker:dev:safe": "BUILDKIT_CONCURRENCY=1 docker compose up -d --build",
+    "docker:monitoring": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d prometheus grafana",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up --build -d",
+    "rules:sync": "bash scripts/sync-rules.sh",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.32.1",
+  "devDependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
+    "@opentelemetry/resources": "^2.6.1",
+    "@opentelemetry/sdk-node": "^0.214.0",
+    "@opentelemetry/sdk-trace-base": "^2.6.1",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/pg": "^8.11.11",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^10.0.3",
+    "husky": "^9.1.7",
+    "jsonwebtoken": "^9.0.3",
+    "lint-staged": "^16.4.0",
+    "pg": "^8.20.0",
+    "prettier": "^3.8.1",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "drizzle-orm": "^0.45.1",
+      "pg": "^8.20.0",
+      "@types/pg": "^8.11.11"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "pnpm exec prettier --write",
+      "pnpm exec eslint --fix --max-warnings 0 --no-warn-ignored"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "pnpm exec prettier --write"
+    ]
+  }
+}
