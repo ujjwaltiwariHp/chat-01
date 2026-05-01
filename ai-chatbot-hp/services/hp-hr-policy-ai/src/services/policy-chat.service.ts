@@ -57,8 +57,9 @@ const policyChatLogger = logger.child({ ns: "hr-policy:chat" });
 
 const buildAnswerPrompt = (message: string, contextBlock: string): string =>
   [
-    "Use only the retrieved policy context below to answer the question.",
-    "If the context is insufficient, say so clearly and do not invent policy.",
+    "Use the retrieved policy context below to answer the question accurately.",
+    "Do not invent policy details.",
+    "If context is partial, provide known details, clearly mark what is not specified, and offer practical guidance as non-policy guidance.",
     "",
     "Prompt version:",
     PROMPT_VERSION,
@@ -71,6 +72,21 @@ const buildAnswerPrompt = (message: string, contextBlock: string): string =>
     "",
     "Respond with a concise answer and cite the supporting policy title inline.",
   ].join("\n");
+
+const shouldPreferFaq = (message: string): boolean => {
+  const normalized = message.trim().toLowerCase();
+  const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+  const deepIntent = /(explain|everything|full|detailed|details|all conditions|all rules|compare|difference|why)/i;
+  return wordCount <= 12 && !deepIntent.test(normalized);
+};
+
+const buildNaturalFallback = (message: string): string => {
+  const lower = message.toLowerCase();
+  if (/(maternity|paternity|bonus|gratuity)/i.test(lower)) {
+    return "I could not find this topic in the current policy set. I can share related policy areas if helpful, or you can confirm the official rule with HR at hr@hangingpanda.com.";
+  }
+  return "I can share what our policy clearly states if you tell me the exact topic (for example leave balance, probation notice period, NCNS, sandwich leave, increment eligibility, or mobile device use).";
+};
 
 export const answerPolicyQuestion = async (
   input: PolicyQuestionInput,
@@ -87,6 +103,25 @@ export const answerPolicyQuestion = async (
     };
   }
 
+  const faqMatch = matchFAQ(input.message, input.history || []);
+  if (faqMatch && shouldPreferFaq(input.message)) {
+    return {
+      answer: faqMatch.answer,
+      citations: [
+        {
+          chunkId: "faq",
+          documentId: "faq",
+          title: faqMatch.policyArea,
+          sourceUrl: null,
+          score: 1.0,
+        },
+      ],
+      matches: [],
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      retrievalQuery: input.message,
+    };
+  }
+
   const retrievalQuery = buildRetrievalQuery(input.message, input.history);
   const STRONG_MATCH_THRESHOLD = config.RAG_MIN_SCORE;
   const topicMatches = resolvePolicyTopicMatches(input.message);
@@ -96,7 +131,6 @@ export const answerPolicyQuestion = async (
   );
 
   if (strongMatches.length === 0) {
-    const faqMatch = matchFAQ(input.message);
     if (faqMatch) {
       return {
         answer: faqMatch.answer,
@@ -124,6 +158,14 @@ export const answerPolicyQuestion = async (
         retrievalQuery,
       };
     }
+
+    return {
+      answer: buildNaturalFallback(input.message),
+      citations: [],
+      matches: [],
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      retrievalQuery,
+    };
   }
 
   const contextBlock =

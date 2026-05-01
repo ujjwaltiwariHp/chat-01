@@ -11,6 +11,8 @@ import {
 const run = () => {
   assert.equal(classifyIntent("hello"), "greeting");
   assert.equal(classifyIntent("thanks"), "thanks");
+  assert.equal(classifyIntent("how are you"), "wellbeing");
+  assert.equal(classifyIntent("are you a bot"), "identity");
   assert.equal(
     classifyIntent("can you help me with leave policy"),
     "policy_query",
@@ -19,6 +21,9 @@ const run = () => {
   const faq = matchFAQ("How many working hours do we have?");
   assert.ok(faq);
   assert.match(faq!.answer, /40 hours/i);
+  const mobileFaq = matchFAQ("what is not allowed in mobile device use");
+  assert.ok(mobileFaq);
+  assert.match(mobileFaq!.answer, /mobile device use/i);
 
   const topics = resolvePolicyTopicMatches("security");
   assert.ok(topics.includes("IT and Data Security"));
