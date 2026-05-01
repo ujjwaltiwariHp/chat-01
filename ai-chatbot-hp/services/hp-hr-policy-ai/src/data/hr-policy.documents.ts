@@ -22,7 +22,7 @@ Our policies are a reflection of our company values. By outlining clear guidelin
 
 Employees are encouraged to communicate openly and to contact Human Resources or their manager if they need clarification on any policy.
 
-Policy Index:
+Policy :
 1. Recruitment and Hiring Policies
 2. Health and Safety Policies
 3. Information Technology (IT) and Data Security Policies
